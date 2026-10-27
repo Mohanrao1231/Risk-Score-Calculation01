@@ -1,9 +1,13 @@
-name: ML Training Pipeline
+name: ML Training CI-CD Pipeline
 
 on:
   push:
     branches:
       - main
+    paths-ignore:
+      - "models/**"
+      - "outputs/**"
+      - "reports/**"
 
   workflow_dispatch:
 
@@ -11,69 +15,107 @@ permissions:
   contents: write
 
 jobs:
+
   train-and-update:
+    name: Train Models and Update Results
+
     runs-on: ubuntu-latest
 
     steps:
 
-      # -----------------------------------
-      # 1. Download repository
-      # -----------------------------------
+      # ==========================================
+      # CHECKOUT
+      # ==========================================
+
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      # -----------------------------------
-      # 2. Setup Python
-      # -----------------------------------
+
+      # ==========================================
+      # PYTHON
+      # ==========================================
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: "pip"
 
-      # -----------------------------------
-      # 3. Install dependencies
-      # -----------------------------------
+
+      # ==========================================
+      # DEPENDENCIES
+      # ==========================================
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      # -----------------------------------
-      # 4. Run ML training
-      # -----------------------------------
-      - name: Train ML models
+
+      # ==========================================
+      # TRAIN MODELS
+      # ==========================================
+
+      - name: Run ML training
         run: |
           python train_models.py
 
-      # -----------------------------------
-      # 5. Check generated files
-      # -----------------------------------
-      - name: Show generated files
+
+      # ==========================================
+      # VERIFY GENERATED FILES
+      # ==========================================
+
+      - name: Verify generated artifacts
         run: |
-          echo "===== OUTPUTS ====="
-          ls -la outputs || true
+          echo "================================="
+          echo "MODELS"
+          echo "================================="
+          ls -lah models/
 
-          echo "===== REPORTS ====="
-          ls -la reports || true
+          echo ""
+          echo "================================="
+          echo "OUTPUTS"
+          echo "================================="
+          ls -lah outputs/
 
-      # -----------------------------------
-      # 6. Configure Git
-      # -----------------------------------
+          echo ""
+          echo "================================="
+          echo "REPORTS"
+          echo "================================="
+          ls -lah reports/
+
+
+      # ==========================================
+      # CONFIGURE GIT
+      # ==========================================
+
       - name: Configure Git
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      # -----------------------------------
-      # 7. Commit regenerated files
-      # -----------------------------------
-      - name: Commit generated files
+
+      # ==========================================
+      # COMMIT GENERATED RESULTS
+      # ==========================================
+
+      - name: Commit updated ML artifacts
         run: |
-          git add -A outputs/ reports/
+
+          git add -A models/ outputs/ reports/
 
           if git diff --cached --quiet; then
-            echo "No changes in outputs or reports."
+
+            echo "No generated artifacts changed."
+
           else
-            git commit -m "Update ML outputs and reports [skip ci]"
-            git push
+
+            echo "Generated artifacts changed."
+
+            git commit -m "Update ML training artifacts [skip ci]"
+
+            git push origin HEAD:main
+
           fi
