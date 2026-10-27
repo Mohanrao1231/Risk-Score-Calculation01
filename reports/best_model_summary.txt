@@ -1,4 +1,4 @@
-Selected model by held-out PR-AUC: xgboost
+Selected model by held-out PR-AUC: lightgbm
 Target: adverse_event_90d
 Random state: 42
 Test size: 20%
