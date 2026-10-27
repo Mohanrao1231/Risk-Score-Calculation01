@@ -1,0 +1,79 @@
+name: ML Training Pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  train-and-update:
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # -----------------------------------
+      # 1. Download repository
+      # -----------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # -----------------------------------
+      # 2. Setup Python
+      # -----------------------------------
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # -----------------------------------
+      # 3. Install dependencies
+      # -----------------------------------
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # -----------------------------------
+      # 4. Run ML training
+      # -----------------------------------
+      - name: Train ML models
+        run: |
+          python train_models.py
+
+      # -----------------------------------
+      # 5. Check generated files
+      # -----------------------------------
+      - name: Show generated files
+        run: |
+          echo "===== OUTPUTS ====="
+          ls -la outputs || true
+
+          echo "===== REPORTS ====="
+          ls -la reports || true
+
+      # -----------------------------------
+      # 6. Configure Git
+      # -----------------------------------
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      # -----------------------------------
+      # 7. Commit regenerated files
+      # -----------------------------------
+      - name: Commit generated files
+        run: |
+          git add -A outputs/ reports/
+
+          if git diff --cached --quiet; then
+            echo "No changes in outputs or reports."
+          else
+            git commit -m "Update ML outputs and reports [skip ci]"
+            git push
+          fi
