@@ -11,7 +11,9 @@ IMPORTANT:
 """
 
 from pathlib import Path
+import shutil
 import warnings
+import subprocess
 
 import joblib
 import numpy as np
@@ -299,11 +301,58 @@ def assign_risk_category(probability):
         return "Medium"
     return "High"
 
+def push_generated_files_to_github():
+    """Automatically commit and push generated ML artifacts to GitHub."""
+
+    print("\n[GIT] Checking generated files...")
+
+    try:
+        subprocess.run(
+            ["git", "add", "models", "outputs", "reports"],
+            cwd=PROJECT_ROOT,
+            check=True
+        )
+
+        # Check whether anything actually changed
+        result = subprocess.run(
+            ["git", "diff", "--cached", "--quiet"],
+            cwd=PROJECT_ROOT
+        )
+
+        if result.returncode == 0:
+            print("[GIT] No changes to commit.")
+            return
+
+        subprocess.run(
+            ["git", "commit", "-m", "Update ML training artifacts"],
+            cwd=PROJECT_ROOT,
+            check=True
+        )
+
+        subprocess.run(
+            ["git", "push", "origin", "main"],
+            cwd=PROJECT_ROOT,
+            check=True
+        )
+
+        print("[GIT] Generated files successfully pushed to GitHub.")
+
+    except subprocess.CalledProcessError as error:
+        print(f"[GIT ERROR] Automatic GitHub update failed: {error}")
 
 def main():
+    # Remove old generated artifacts
+    for directory in [MODELS_DIR, OUTPUTS_DIR, REPORTS_DIR]:
+        if directory.exists():
+            print(f"[CLEAN] Removing old directory: {directory.name}/")
+            shutil.rmtree(directory)
+
+    # Create fresh directories
     MODELS_DIR.mkdir(parents=True, exist_ok=True)
     OUTPUTS_DIR.mkdir(parents=True, exist_ok=True)
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+
+    print("[READY] Fresh models/, outputs/ and reports/ directories created.")
 
     print("=" * 68)
     print("AI PATIENT RISK SCORE PREDICTION SYSTEM")
@@ -430,6 +479,7 @@ def main():
         "time windows are valid. Risk categories are provisional demonstration bands."
     )
 
+push_generated_files_to_github()
 
 if __name__ == "__main__":
     main()
